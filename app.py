@@ -32,7 +32,11 @@ def fetch_thumbnail():
         return jsonify({"error": "YouTube videos are not currently supported. Try Instagram, Facebook, or Twitter."})
 
     try:
-        with YoutubeDL({'quiet': True}) as ydl:
+        ydl_opts = {
+            'quiet': True,
+            'noplaylist': True
+        }
+        with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             return jsonify({
                 "thumbnail": info.get("thumbnail"),
@@ -40,7 +44,10 @@ def fetch_thumbnail():
                 "title": info.get("title", "Video")
             })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        err = str(e)
+        if '302' in err or 'redirect' in err:
+            return jsonify({"error": "This video link is redirecting too many times. Try using a full desktop post URL instead."})
+        return jsonify({"error": err}), 500
 
 @app.route("/download", methods=["POST"])
 def download():
@@ -59,6 +66,7 @@ def download():
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',
             'outtmpl': output_path,
             'merge_output_format': 'mp4',
+            'noplaylist': True
         }
 
         with YoutubeDL(ydl_opts) as ydl:
@@ -67,7 +75,10 @@ def download():
         return jsonify({ "download_url": f"/downloaded/{filename}" })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        err = str(e)
+        if '302' in err or 'redirect' in err:
+            return jsonify({"error": "This video link is redirecting too many times. Try using a full desktop post URL instead."})
+        return jsonify({"error": err}), 500
 
 @app.route("/downloaded/<filename>")
 def serve_video(filename):
