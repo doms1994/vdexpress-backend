@@ -6,14 +6,28 @@ import uuid
 
 app = Flask(__name__)
 CORS(app, origins=["https://domcreator.co.uk"])
+
 DOWNLOAD_FOLDER = os.path.join(os.getcwd(), 'downloads')
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+
+def detect_platform(url):
+    if "youtube.com" in url or "youtu.be" in url:
+        return "YouTube"
+    elif "instagram.com" in url:
+        return "Instagram"
+    elif "facebook.com" in url or "fb.watch" in url:
+        return "Facebook"
+    elif "twitter.com" in url or "x.com" in url:
+        return "Twitter"
+    else:
+        return "Unknown"
 
 @app.route("/fetch-thumbnail", methods=["POST"])
 def fetch_thumbnail():
     url = request.json.get("url")
     if not url:
         return jsonify({"error": "No URL provided"}), 400
+
     try:
         with YoutubeDL({'quiet': True}) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -23,13 +37,17 @@ def fetch_thumbnail():
                 "title": info.get("title", "Video")
             })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        err = str(e)
+        if 'Sign in to confirm' in err or 'cookies' in err or 'login' in err:
+            return jsonify({"error": "This video requires login. Only public videos are supported."})
+        return jsonify({"error": err}), 500
 
 @app.route("/download", methods=["POST"])
 def download():
     url = request.json.get("url")
     if not url:
         return jsonify({"error": "No URL provided"}), 400
+
     try:
         filename = f"{uuid.uuid4()}.mp4"
         output_path = os.path.join(DOWNLOAD_FOLDER, filename)
@@ -44,8 +62,12 @@ def download():
             ydl.download([url])
 
         return jsonify({ "download_url": f"/downloaded/{filename}" })
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        err = str(e)
+        if 'Sign in to confirm' in err or 'cookies' in err or 'login' in err:
+            return jsonify({"error": "This video requires login. Only public videos are supported."})
+        return jsonify({"error": err}), 500
 
 @app.route("/downloaded/<filename>")
 def serve_video(filename):
@@ -57,21 +79,9 @@ def serve_video(filename):
         return send_file(filepath, as_attachment=True)
     finally:
         try:
-            os.remove(filepath)  # delete after sending
+            os.remove(filepath)
         except:
             pass
-
-def detect_platform(url):
-    if "youtube.com" in url or "youtu.be" in url:
-        return "YouTube"
-    elif "instagram.com" in url:
-        return "Instagram"
-    elif "facebook.com" in url or "fb.watch" in url:
-        return "Facebook"
-    elif "twitter.com" in url or "x.com" in url:
-        return "Twitter"
-    else:
-        return "Unknown"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
