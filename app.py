@@ -28,14 +28,11 @@ def fetch_thumbnail():
     if not url:
         return jsonify({"error": "No URL provided"}), 400
 
+    if detect_platform(url) == "YouTube":
+        return jsonify({"error": "YouTube videos are not currently supported. Try Instagram, Facebook, or Twitter."})
+
     try:
-        ydl_opts = {
-            'quiet': True,
-            'extractor_args': {
-                'youtube': ['player_client=web']
-            }
-        }
-        with YoutubeDL(ydl_opts) as ydl:
+        with YoutubeDL({'quiet': True}) as ydl:
             info = ydl.extract_info(url, download=False)
             return jsonify({
                 "thumbnail": info.get("thumbnail"),
@@ -43,16 +40,16 @@ def fetch_thumbnail():
                 "title": info.get("title", "Video")
             })
     except Exception as e:
-        err = str(e)
-        if 'Sign in to confirm' in err or 'cookies' in err or 'login' in err:
-            return jsonify({"error": "This video requires login. Only public videos are supported."})
-        return jsonify({"error": err}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/download", methods=["POST"])
 def download():
     url = request.json.get("url")
     if not url:
         return jsonify({"error": "No URL provided"}), 400
+
+    if detect_platform(url) == "YouTube":
+        return jsonify({"error": "YouTube videos are not currently supported. Try Instagram, Facebook, or Twitter."})
 
     try:
         filename = f"{uuid.uuid4()}.mp4"
@@ -62,9 +59,6 @@ def download():
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',
             'outtmpl': output_path,
             'merge_output_format': 'mp4',
-            'extractor_args': {
-                'youtube': ['player_client=web']
-            }
         }
 
         with YoutubeDL(ydl_opts) as ydl:
@@ -73,10 +67,7 @@ def download():
         return jsonify({ "download_url": f"/downloaded/{filename}" })
 
     except Exception as e:
-        err = str(e)
-        if 'Sign in to confirm' in err or 'cookies' in err or 'login' in err:
-            return jsonify({"error": "This video requires login. Only public videos are supported."})
-        return jsonify({"error": err}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/downloaded/<filename>")
 def serve_video(filename):
@@ -85,12 +76,4 @@ def serve_video(filename):
         return abort(404)
 
     try:
-        return send_file(filepath, as_attachment=True)
-    finally:
-        try:
-            os.remove(filepath)
-        except:
-            pass
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+        return send_file(filepath, as_attachment=Tr
