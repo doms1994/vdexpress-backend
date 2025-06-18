@@ -29,7 +29,13 @@ def fetch_thumbnail():
         return jsonify({"error": "No URL provided"}), 400
 
     try:
-        with YoutubeDL({'quiet': True}) as ydl:
+        ydl_opts = {
+            'quiet': True,
+            'extractor_args': {
+                'youtube': ['player_client=web']
+            }
+        }
+        with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             return jsonify({
                 "thumbnail": info.get("thumbnail"),
@@ -56,6 +62,9 @@ def download():
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',
             'outtmpl': output_path,
             'merge_output_format': 'mp4',
+            'extractor_args': {
+                'youtube': ['player_client=web']
+            }
         }
 
         with YoutubeDL(ydl_opts) as ydl:
