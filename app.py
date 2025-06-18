@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify, send_file, abort
+from flask_cors import CORS
 from yt_dlp import YoutubeDL
 import os
 import uuid
 
 app = Flask(__name__)
+CORS(app, origins=["https://domcreator.co.uk"])
 DOWNLOAD_FOLDER = os.path.join(os.getcwd(), 'downloads')
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
