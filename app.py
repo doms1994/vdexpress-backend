@@ -76,4 +76,12 @@ def serve_video(filename):
         return abort(404)
 
     try:
-        return send_file(filepath, as_attachment=Tr
+        return send_file(filepath, as_attachment=True)
+    finally:
+        try:
+            os.remove(filepath)
+        except:
+            pass
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
